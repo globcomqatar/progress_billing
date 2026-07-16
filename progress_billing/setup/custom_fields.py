@@ -12,6 +12,10 @@ def get_custom_fields():
 				"collapsible": 1,
 			},
 			{
+				# allow_on_submit: editing this field after submit is exactly
+				# the scenario validate_billing_method_lock exists to guard —
+				# without it, Frappe's own submit-lock blocks the edit
+				# unconditionally, before our lock logic ever runs.
 				"fieldname": "pb_billing_method",
 				"label": "Billing Method",
 				"fieldtype": "Select",
@@ -19,6 +23,7 @@ def get_custom_fields():
 				"default": "Quantity Based",
 				"insert_after": "pb_section_break_progress_billing",
 				"in_standard_filter": 1,
+				"allow_on_submit": 1,
 			},
 			{
 				"fieldname": "pb_column_break_progress_billing",

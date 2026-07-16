@@ -21,5 +21,6 @@ after_migrate = "progress_billing.setup.custom_fields.sync_custom_fields"
 doc_events = {
 	"Sales Order": {
 		"validate": "progress_billing.overrides.sales_order.validate_billing_method_lock",
+		"before_update_after_submit": "progress_billing.overrides.sales_order.validate_billing_method_lock",
 	},
 }
