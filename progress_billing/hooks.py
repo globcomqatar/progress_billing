@@ -5,6 +5,13 @@ app_description = "Percentage-of-contract-value progress invoicing for ERPNext S
 app_email = "waheed@globcomqatar.com"
 app_license = "mit"
 
+# Includes in <head>
+# ------------------
+
+doctype_js = {
+	"Sales Order": "public/js/sales_order.js",
+}
+
 # Installation
 # ------------
 
