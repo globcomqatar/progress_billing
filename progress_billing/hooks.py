@@ -4,3 +4,13 @@ app_publisher = "Globcom Qatar"
 app_description = "Percentage-of-contract-value progress invoicing for ERPNext Sales Orders"
 app_email = "waheed@globcomqatar.com"
 app_license = "mit"
+
+# Installation
+# ------------
+
+after_install = "progress_billing.install.after_install"
+
+# Migration
+# ---------
+
+after_migrate = "progress_billing.setup.custom_fields.sync_custom_fields"
