@@ -14,3 +14,12 @@ after_install = "progress_billing.install.after_install"
 # ---------
 
 after_migrate = "progress_billing.setup.custom_fields.sync_custom_fields"
+
+# Document Events
+# ---------------
+
+doc_events = {
+	"Sales Order": {
+		"validate": "progress_billing.overrides.sales_order.validate_billing_method_lock",
+	},
+}
