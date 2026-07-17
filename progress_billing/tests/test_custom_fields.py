@@ -7,12 +7,19 @@ class TestCustomFields(FrappeTestCase):
 		meta = frappe.get_meta("Sales Order")
 		self.assertTrue(meta.has_field("pb_billing_method"))
 		self.assertTrue(meta.has_field("pb_progress_billing_status"))
-		self.assertTrue(meta.has_field("pb_progress_billing_summary"))
+		self.assertTrue(meta.has_field("pb_progress_billing_log_html"))
+		self.assertTrue(meta.has_field("pb_progress_billing_log"))
+		self.assertFalse(meta.has_field("pb_progress_billing_summary"))
 
 		billing_method_field = meta.get_field("pb_billing_method")
 		self.assertEqual(billing_method_field.fieldtype, "Select")
 		self.assertEqual(billing_method_field.default, "Quantity Based")
 		self.assertEqual(billing_method_field.options, "Quantity Based\nProgress Billing")
+
+		log_field = meta.get_field("pb_progress_billing_log")
+		self.assertEqual(log_field.fieldtype, "Table")
+		self.assertEqual(log_field.options, "Progress Billing Log")
+		self.assertEqual(log_field.allow_on_submit, 1)
 
 	def test_sales_invoice_fields_exist(self):
 		meta = frappe.get_meta("Sales Invoice")
