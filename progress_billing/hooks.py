@@ -5,6 +5,8 @@ app_description = "Percentage-of-contract-value progress invoicing for ERPNext S
 app_email = "waheed@globcomqatar.com"
 app_license = "mit"
 
+required_apps = ["erpnext"]
+
 # Includes in <head>
 # ------------------
 
