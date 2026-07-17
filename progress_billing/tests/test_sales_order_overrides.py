@@ -41,5 +41,5 @@ class TestBillingMethodLock(FrappeTestCase):
 
 		so.reload()
 		so.pb_billing_method = "Quantity Based"
-		with self.assertRaises(frappe.ValidationError):
+		with self.assertRaisesRegex(frappe.ValidationError, "Progress Invoices already exist"):
 			so.save()

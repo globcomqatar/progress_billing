@@ -31,6 +31,7 @@ doc_events = {
 		"before_update_after_submit": "progress_billing.overrides.sales_order.validate_billing_method_lock",
 	},
 	"Sales Invoice": {
+		"validate": "progress_billing.overrides.sales_invoice.validate_is_progress_invoice",
 		"on_submit": "progress_billing.overrides.sales_invoice.update_progress_billing_status",
 		"on_cancel": "progress_billing.overrides.sales_invoice.update_progress_billing_status",
 	},

@@ -1,11 +1,12 @@
 import frappe
 from frappe import _
+from frappe.model.document import Document
 from frappe.utils import flt
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 
 
 @frappe.whitelist()
-def create_progress_invoice(sales_order: str, percentage: float) -> dict:
+def create_progress_invoice(sales_order: str, percentage: float) -> Document:
 	percentage = flt(percentage)
 	so = frappe.get_doc("Sales Order", sales_order)
 

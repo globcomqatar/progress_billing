@@ -56,3 +56,53 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		so.reload()
 		self.assertEqual(flt(so.per_billed), 0.0)
 		self.assertEqual(so.pb_progress_billing_status, "In Progress")
+
+	def test_standard_invoice_blocked_against_progress_billing_order(self):
+		so = self.make_progress_so()
+
+		invoice = frappe.new_doc("Sales Invoice")
+		invoice.customer = so.customer
+		invoice.company = so.company
+		invoice.currency = so.currency
+		invoice.append(
+			"items",
+			{
+				"item_code": "_Test Item",
+				"qty": 1,
+				"rate": 100000,
+				"sales_order": so.name,
+			},
+		)
+
+		with self.assertRaises(frappe.ValidationError):
+			invoice.insert()
+
+	def test_progress_invoice_not_blocked(self):
+		so = self.make_progress_so()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 10))
+		invoice.insert()  # should not raise
+		self.assertTrue(invoice.name)
+
+	def test_standard_invoice_allowed_against_quantity_based_order(self):
+		so = make_sales_order(
+			item_list=[{"item_code": "_Test Item", "qty": 1, "rate": 100000}],
+			do_not_submit=True,
+		)
+		so.submit()
+
+		invoice = frappe.new_doc("Sales Invoice")
+		invoice.customer = so.customer
+		invoice.company = so.company
+		invoice.currency = so.currency
+		invoice.append(
+			"items",
+			{
+				"item_code": "_Test Item",
+				"qty": 1,
+				"rate": 100000,
+				"sales_order": so.name,
+			},
+		)
+		invoice.insert()  # should not raise
+		self.assertTrue(invoice.name)
