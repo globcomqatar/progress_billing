@@ -1,5 +1,27 @@
 import frappe
 from frappe import _
+from frappe.utils import flt
+
+
+def refresh_progress_billing_log_payments(doc, method):
+	for row in doc.get("pb_progress_billing_log") or []:
+		if not row.sales_invoice:
+			continue
+
+		invoice = frappe.db.get_value(
+			"Sales Invoice",
+			row.sales_invoice,
+			["grand_total", "outstanding_amount"],
+			as_dict=True,
+		)
+		if not invoice:
+			continue
+
+		row.amount_paid = flt(invoice.grand_total) - flt(invoice.outstanding_amount)
+		row.outstanding_amount = flt(invoice.outstanding_amount)
+		row.payment_percentage = (
+			(row.amount_paid / invoice.grand_total * 100) if invoice.grand_total else 0
+		)
 
 
 def validate_billing_method_lock(doc, method):
