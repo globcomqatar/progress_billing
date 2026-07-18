@@ -107,18 +107,37 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		invoice.insert()  # should not raise
 		self.assertTrue(invoice.name)
 
-	def test_log_row_created_on_invoice_creation(self):
+	def test_no_log_row_for_draft_invoice_and_draft_is_deletable(self):
+		# A draft progress invoice must not create a Progress Billing Log row:
+		# the row's Link field back to the invoice would make Frappe's
+		# check_if_doc_is_linked block deleting the draft (LinkExistsError),
+		# and draft amounts would inflate the Billing Summary while per_billed
+		# (submitted-only) stayed put. The row is created at submit instead.
 		so = self.make_progress_so()
 
 		invoice = frappe.get_doc(create_progress_invoice(so.name, 10))
 		invoice.insert()
 
 		so.reload()
+		self.assertEqual(len(so.pb_progress_billing_log), 0)
+
+		# should not raise LinkExistsError
+		frappe.delete_doc("Sales Invoice", invoice.name)
+		self.assertFalse(frappe.db.exists("Sales Invoice", invoice.name))
+
+	def test_log_row_created_on_submit(self):
+		so = self.make_progress_so()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 10))
+		invoice.insert()
+		invoice.submit()
+
+		so.reload()
 		self.assertEqual(len(so.pb_progress_billing_log), 1)
 		row = so.pb_progress_billing_log[0]
 		self.assertEqual(row.progress_no, 1)
 		self.assertEqual(row.sales_invoice, invoice.name)
-		self.assertEqual(row.invoice_status, "Draft")
+		self.assertEqual(row.invoice_status, "Submitted")
 		self.assertEqual(round(flt(row.billing_percentage), 2), 10.0)
 		self.assertEqual(round(flt(row.billing_amount), 2), round(flt(invoice.grand_total), 2))
 

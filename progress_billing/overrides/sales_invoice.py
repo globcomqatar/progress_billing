@@ -37,6 +37,13 @@ def sync_progress_billing_log_row(doc, method):
 	if not doc.pb_is_progress_invoice:
 		return
 
+	# Drafts must not appear in the log: the row's Link back to the invoice
+	# would block deleting the draft (check_if_doc_is_linked), and draft
+	# amounts would disagree with per_billed (submitted-only) in the Billing
+	# Summary. The row is created when this hook fires again at submit.
+	if doc.docstatus == 0:
+		return
+
 	so_name = doc.pb_against_sales_order
 	if not so_name:
 		return

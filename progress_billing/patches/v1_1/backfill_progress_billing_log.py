@@ -3,9 +3,11 @@ from frappe.utils import cint, flt
 
 
 def execute():
+	# Submitted invoices only: drafts must not be linked from the log (their
+	# Link row would block deleting the draft), matching sync_progress_billing_log_row.
 	invoices = frappe.get_all(
 		"Sales Invoice",
-		filters={"pb_is_progress_invoice": 1, "docstatus": ["!=", 2]},
+		filters={"pb_is_progress_invoice": 1, "docstatus": 1},
 		fields=[
 			"name",
 			"pb_against_sales_order",
@@ -49,7 +51,7 @@ def execute():
 				"billing_percentage": invoice.pb_progress_billing_percentage,
 				"billing_amount": invoice.grand_total,
 				"sales_invoice": invoice.name,
-				"invoice_status": "Submitted" if invoice.docstatus == 1 else "Draft",
+				"invoice_status": "Submitted",
 				"amount_paid": amount_paid,
 				"outstanding_amount": invoice.outstanding_amount,
 				"payment_percentage": payment_percentage,
