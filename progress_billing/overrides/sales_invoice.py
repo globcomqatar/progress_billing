@@ -41,21 +41,22 @@ def sync_progress_billing_log_row(doc, method):
 	if not so_name:
 		return
 
-	# When cancelling, Frappe's "linked document" check (run right after on_cancel)
-	# would otherwise block cancellation because the Progress Billing Log child row
-	# on the Sales Order still references this (about-to-be-cancelled) invoice.
-	# That reference is an intentional, permanent audit trail, not a live dependency,
-	# so tell Frappe to skip the Sales Order doctype in that check. Append rather than
-	# overwrite so we don't clobber the core Sales Invoice controller's own exclusions
-	# (e.g. GL Entry) for this same event.
-	existing_ignores = list(doc.get("ignore_linked_doctypes") or [])
-	if "Sales Order" not in existing_ignores:
-		doc.ignore_linked_doctypes = existing_ignores + ["Sales Order"]
-
 	so = frappe.get_doc("Sales Order", so_name)
 
 	status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
 	status = status_map.get(doc.docstatus, "Draft")
+
+	if status == "Cancelled":
+		# When cancelling, Frappe's "linked document" check (run right after on_cancel)
+		# would otherwise block cancellation because the Progress Billing Log child row
+		# on the Sales Order still references this (about-to-be-cancelled) invoice.
+		# That reference is an intentional, permanent audit trail, not a live dependency,
+		# so tell Frappe to skip the Sales Order doctype in that check. Append rather than
+		# overwrite so we don't clobber the core Sales Invoice controller's own exclusions
+		# (e.g. GL Entry) for this same event.
+		existing_ignores = list(doc.get("ignore_linked_doctypes") or [])
+		if "Sales Order" not in existing_ignores:
+			doc.ignore_linked_doctypes = existing_ignores + ["Sales Order"]
 
 	amount_paid = flt(doc.grand_total) - flt(doc.outstanding_amount)
 	payment_percentage = (amount_paid / doc.grand_total * 100) if doc.grand_total else 0
