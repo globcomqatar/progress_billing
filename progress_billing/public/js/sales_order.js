@@ -10,25 +10,32 @@ frappe.ui.form.on("Sales Order", {
 
 function render_progress_billing_summary(frm) {
 	if (frm.doc.pb_billing_method !== "Progress Billing") {
-		frm.set_df_property("pb_progress_billing_summary", "options", "");
+		frm.set_df_property("pb_progress_billing_log_html", "options", "");
 		return;
 	}
 
+	const rows = (frm.doc.pb_progress_billing_log || []).filter(
+		(row) => row.invoice_status !== "Cancelled"
+	);
+
 	const grand_total = flt(frm.doc.grand_total);
+	const total_invoiced = rows.reduce((sum, row) => sum + flt(row.billing_amount), 0);
+	const total_received = rows.reduce((sum, row) => sum + flt(row.amount_paid), 0);
+	const outstanding = total_invoiced - total_received;
 	const per_billed = flt(frm.doc.per_billed);
-	const billed_amount = (grand_total * per_billed) / 100;
-	const remaining_amount = grand_total - billed_amount;
 	const remaining_percent = 100 - per_billed;
 
 	const html = `
 		<table class="table table-bordered" style="margin-bottom: 0;">
-			<tr><td>${__("Total Contract Value")}</td><td>${format_currency(grand_total, frm.doc.currency)}</td></tr>
-			<tr><td>${__("Total Progress Billed")}</td><td>${format_currency(billed_amount, frm.doc.currency)} (${per_billed.toFixed(2)}%)</td></tr>
-			<tr><td>${__("Remaining Amount")}</td><td>${format_currency(remaining_amount, frm.doc.currency)} (${remaining_percent.toFixed(2)}%)</td></tr>
+			<tr><td>${__("Contract Value")}</td><td>${format_currency(grand_total, frm.doc.currency)}</td></tr>
+			<tr><td>${__("Total Progress Invoiced")}</td><td>${format_currency(total_invoiced, frm.doc.currency)} (${per_billed.toFixed(2)}%)</td></tr>
+			<tr><td>${__("Total Amount Received")}</td><td>${format_currency(total_received, frm.doc.currency)}</td></tr>
+			<tr><td>${__("Outstanding Amount")}</td><td>${format_currency(outstanding, frm.doc.currency)}</td></tr>
+			<tr><td>${__("Remaining Percentage")}</td><td>${remaining_percent.toFixed(2)}%</td></tr>
 		</table>
 	`;
-	frm.set_df_property("pb_progress_billing_summary", "options", html);
-	frm.refresh_field("pb_progress_billing_summary");
+	frm.set_df_property("pb_progress_billing_log_html", "options", html);
+	frm.refresh_field("pb_progress_billing_log_html");
 }
 
 function add_create_progress_invoice_button(frm) {
