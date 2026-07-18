@@ -35,6 +35,10 @@ doc_events = {
 	"Sales Invoice": {
 		"validate": "progress_billing.overrides.sales_invoice.validate_is_progress_invoice",
 		"on_submit": "progress_billing.overrides.sales_invoice.update_progress_billing_status",
-		"on_cancel": "progress_billing.overrides.sales_invoice.update_progress_billing_status",
+		"on_cancel": [
+			"progress_billing.overrides.sales_invoice.update_progress_billing_status",
+			"progress_billing.overrides.sales_invoice.sync_progress_billing_log_row",
+		],
+		"on_update": "progress_billing.overrides.sales_invoice.sync_progress_billing_log_row",
 	},
 }

@@ -106,3 +106,55 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		)
 		invoice.insert()  # should not raise
 		self.assertTrue(invoice.name)
+
+	def test_log_row_created_on_invoice_creation(self):
+		so = self.make_progress_so()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 10))
+		invoice.insert()
+
+		so.reload()
+		self.assertEqual(len(so.pb_progress_billing_log), 1)
+		row = so.pb_progress_billing_log[0]
+		self.assertEqual(row.progress_no, 1)
+		self.assertEqual(row.sales_invoice, invoice.name)
+		self.assertEqual(row.invoice_status, "Draft")
+		self.assertEqual(round(flt(row.billing_percentage), 2), 10.0)
+		self.assertEqual(round(flt(row.billing_amount), 2), round(flt(invoice.grand_total), 2))
+
+	def test_log_row_status_transitions_through_submit_and_cancel(self):
+		so = self.make_progress_so()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 10))
+		invoice.insert()
+		invoice.submit()
+
+		so.reload()
+		row = so.pb_progress_billing_log[0]
+		self.assertEqual(row.invoice_status, "Submitted")
+
+		invoice.cancel()
+
+		so.reload()
+		row = so.pb_progress_billing_log[0]
+		self.assertEqual(row.invoice_status, "Cancelled")
+
+	def test_progress_no_permanent_across_cancellation(self):
+		so = self.make_progress_so()
+
+		invoice_1 = frappe.get_doc(create_progress_invoice(so.name, 10))
+		invoice_1.insert()
+		invoice_1.submit()
+
+		invoice_2 = frappe.get_doc(create_progress_invoice(so.name, 40))
+		invoice_2.insert()
+		invoice_2.submit()
+
+		invoice_1.cancel()
+
+		so.reload()
+		rows_by_invoice = {row.sales_invoice: row for row in so.pb_progress_billing_log}
+		self.assertEqual(rows_by_invoice[invoice_1.name].progress_no, 1)
+		self.assertEqual(rows_by_invoice[invoice_1.name].invoice_status, "Cancelled")
+		self.assertEqual(rows_by_invoice[invoice_2.name].progress_no, 2)
+		self.assertEqual(rows_by_invoice[invoice_2.name].invoice_status, "Submitted")

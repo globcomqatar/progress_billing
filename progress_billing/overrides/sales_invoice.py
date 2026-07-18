@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 
 def update_progress_billing_status(doc, method):
@@ -31,3 +31,65 @@ def validate_is_progress_invoice(doc, method):
 					"on the Sales Order instead of a standard invoice."
 				).format(so_name)
 			)
+
+
+def sync_progress_billing_log_row(doc, method):
+	if not doc.pb_is_progress_invoice:
+		return
+
+	so_name = doc.pb_against_sales_order
+	if not so_name:
+		return
+
+	# When cancelling, Frappe's "linked document" check (run right after on_cancel)
+	# would otherwise block cancellation because the Progress Billing Log child row
+	# on the Sales Order still references this (about-to-be-cancelled) invoice.
+	# That reference is an intentional, permanent audit trail, not a live dependency,
+	# so tell Frappe to skip the Sales Order doctype in that check. Append rather than
+	# overwrite so we don't clobber the core Sales Invoice controller's own exclusions
+	# (e.g. GL Entry) for this same event.
+	existing_ignores = list(doc.get("ignore_linked_doctypes") or [])
+	if "Sales Order" not in existing_ignores:
+		doc.ignore_linked_doctypes = existing_ignores + ["Sales Order"]
+
+	so = frappe.get_doc("Sales Order", so_name)
+
+	status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
+	status = status_map.get(doc.docstatus, "Draft")
+
+	amount_paid = flt(doc.grand_total) - flt(doc.outstanding_amount)
+	payment_percentage = (amount_paid / doc.grand_total * 100) if doc.grand_total else 0
+
+	row = None
+	for existing in so.get("pb_progress_billing_log") or []:
+		if existing.sales_invoice == doc.name:
+			row = existing
+			break
+
+	if row is None:
+		max_progress_no = max(
+			[cint(r.progress_no) for r in (so.get("pb_progress_billing_log") or [])], default=0
+		)
+		row = so.append(
+			"pb_progress_billing_log",
+			{
+				"progress_no": max_progress_no + 1,
+				"billing_date": doc.posting_date,
+				"billing_percentage": doc.pb_progress_billing_percentage,
+				"billing_amount": doc.grand_total,
+				"sales_invoice": doc.name,
+			},
+		)
+
+	row.invoice_status = status
+	row.amount_paid = amount_paid
+	row.outstanding_amount = doc.outstanding_amount
+	row.payment_percentage = payment_percentage
+
+	# The log row intentionally keeps its Sales Invoice link after that invoice is
+	# cancelled (it's an audit trail, not a live reference), so bypass Frappe's
+	# standard "cannot link to a cancelled document" check for this save. This is
+	# the same pattern used throughout erpnext/frappe for log/history child tables
+	# (see e.g. accounts_controller.py, stock_controller.py `flags.ignore_links`).
+	so.flags.ignore_links = True
+	so.save(ignore_permissions=True)
