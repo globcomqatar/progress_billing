@@ -65,8 +65,14 @@ def sync_progress_billing_log_row(doc, method):
 		if "Sales Order" not in existing_ignores:
 			doc.ignore_linked_doctypes = existing_ignores + ["Sales Order"]
 
-	amount_paid = flt(doc.grand_total) - flt(doc.outstanding_amount)
-	payment_percentage = (amount_paid / doc.grand_total * 100) if doc.grand_total else 0
+	# ERPNext computes outstanding_amount against the ROUNDED total
+	# (taxes_and_totals.calculate_outstanding_amount: rounded_total or
+	# grand_total), so paid math must use the same basis — otherwise an
+	# unpaid invoice whose total rounds (e.g. 448.50 -> 448.00) shows a
+	# phantom 0.50 "paid".
+	invoice_total = flt(doc.rounded_total) or flt(doc.grand_total)
+	amount_paid = invoice_total - flt(doc.outstanding_amount)
+	payment_percentage = (amount_paid / invoice_total * 100) if invoice_total else 0
 
 	row = None
 	for existing in so.get("pb_progress_billing_log") or []:

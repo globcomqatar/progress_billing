@@ -21,7 +21,10 @@ function render_progress_billing_summary(frm) {
 	const grand_total = flt(frm.doc.grand_total);
 	const total_invoiced = rows.reduce((sum, row) => sum + flt(row.billing_amount), 0);
 	const total_received = rows.reduce((sum, row) => sum + flt(row.amount_paid), 0);
-	const outstanding = total_invoiced - total_received;
+	// Sum the rows' live outstanding rather than invoiced - received: invoices
+	// with rounded totals owe the rounded amount, so the difference would be
+	// off by the rounding adjustments.
+	const outstanding = rows.reduce((sum, row) => sum + flt(row.outstanding_amount), 0);
 	const per_billed = flt(frm.doc.per_billed);
 	const remaining_percent = 100 - per_billed;
 

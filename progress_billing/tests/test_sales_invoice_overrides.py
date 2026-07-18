@@ -158,6 +158,41 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		row = so.pb_progress_billing_log[0]
 		self.assertEqual(row.invoice_status, "Cancelled")
 
+	def test_no_phantom_paid_amount_on_rounded_invoice(self):
+		# 30% of 1495 = 448.50, which ERPNext rounds to an invoice total of
+		# 448.00 and computes outstanding_amount against the ROUNDED total
+		# (taxes_and_totals.calculate_outstanding_amount). Deriving paid as
+		# grand_total - outstanding therefore showed a phantom 0.50 "paid"
+		# on a completely unpaid invoice. Paid math must use the same basis
+		# ERPNext uses: rounded_total or grand_total.
+		so = make_sales_order(
+			item_list=[{"item_code": "_Test Item", "qty": 1, "rate": 1495}],
+			do_not_submit=True,
+		)
+		so.pb_billing_method = "Progress Billing"
+		so.save()
+		so.submit()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 30))
+		invoice.insert()
+		invoice.submit()
+
+		# precondition: rounding actually kicked in for this amount
+		self.assertEqual(flt(invoice.grand_total), 448.5)
+		self.assertEqual(flt(invoice.rounded_total), 448.0)
+
+		so.reload()
+		row = so.pb_progress_billing_log[0]
+		self.assertEqual(flt(row.amount_paid), 0.0)
+		self.assertEqual(flt(row.payment_percentage), 0.0)
+
+		# the live onload refresh shares the same math
+		reloaded_so = frappe.get_doc("Sales Order", so.name)
+		reloaded_so.run_method("onload")
+		row = reloaded_so.pb_progress_billing_log[0]
+		self.assertEqual(flt(row.amount_paid), 0.0)
+		self.assertEqual(flt(row.payment_percentage), 0.0)
+
 	def test_progress_no_permanent_across_cancellation(self):
 		so = self.make_progress_so()
 

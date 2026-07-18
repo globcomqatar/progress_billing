@@ -14,6 +14,7 @@ def execute():
 			"pb_progress_billing_percentage",
 			"posting_date",
 			"grand_total",
+			"rounded_total",
 			"outstanding_amount",
 			"docstatus",
 		],
@@ -40,8 +41,11 @@ def execute():
 		max_progress_no = max(
 			[cint(row.progress_no) for row in (so.get("pb_progress_billing_log") or [])], default=0
 		)
-		amount_paid = flt(invoice.grand_total) - flt(invoice.outstanding_amount)
-		payment_percentage = (amount_paid / invoice.grand_total * 100) if invoice.grand_total else 0
+		# ERPNext computes outstanding_amount against the ROUNDED total, so
+		# paid math must use the same basis (see sync_progress_billing_log_row).
+		invoice_total = flt(invoice.rounded_total) or flt(invoice.grand_total)
+		amount_paid = invoice_total - flt(invoice.outstanding_amount)
+		payment_percentage = (amount_paid / invoice_total * 100) if invoice_total else 0
 
 		so.append(
 			"pb_progress_billing_log",

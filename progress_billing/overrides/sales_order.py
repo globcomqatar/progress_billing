@@ -11,16 +11,19 @@ def refresh_progress_billing_log_payments(doc, method):
 		invoice = frappe.db.get_value(
 			"Sales Invoice",
 			row.sales_invoice,
-			["grand_total", "outstanding_amount"],
+			["grand_total", "rounded_total", "outstanding_amount"],
 			as_dict=True,
 		)
 		if not invoice:
 			continue
 
-		row.amount_paid = flt(invoice.grand_total) - flt(invoice.outstanding_amount)
+		# ERPNext computes outstanding_amount against the ROUNDED total, so
+		# paid math must use the same basis (see sync_progress_billing_log_row).
+		invoice_total = flt(invoice.rounded_total) or flt(invoice.grand_total)
+		row.amount_paid = invoice_total - flt(invoice.outstanding_amount)
 		row.outstanding_amount = flt(invoice.outstanding_amount)
 		row.payment_percentage = (
-			(row.amount_paid / invoice.grand_total * 100) if invoice.grand_total else 0
+			(row.amount_paid / invoice_total * 100) if invoice_total else 0
 		)
 
 
