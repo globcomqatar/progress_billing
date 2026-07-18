@@ -57,4 +57,9 @@ def execute():
 		)
 
 	for so in orders.values():
+		# A Sales Order's Progress Billing Log can reference a since-cancelled progress
+		# invoice (an intentional audit trail, not a live dependency). Bypass Frappe's
+		# "cannot link to a cancelled document" check for this save, matching the same
+		# pattern used in sync_progress_billing_log_row (overrides/sales_invoice.py).
+		so.flags.ignore_links = True
 		so.save(ignore_permissions=True)
