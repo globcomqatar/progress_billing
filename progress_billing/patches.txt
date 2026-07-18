@@ -4,3 +4,4 @@
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+progress_billing.patches.v1_1.backfill_progress_billing_log
