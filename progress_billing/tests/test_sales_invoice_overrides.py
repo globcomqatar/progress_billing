@@ -158,6 +158,29 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		row = so.pb_progress_billing_log[0]
 		self.assertEqual(row.invoice_status, "Cancelled")
 
+	def test_progress_billing_totals_stored_on_sales_order(self):
+		# pb_total_amount / pb_billed_amount / pb_remaining_amount are stored
+		# Currency fields mirroring the Billing Summary: Total = contract
+		# value, Billed = sum of non-cancelled log rows, Remaining = Total -
+		# Billed. They must update on invoice submit and on cancel.
+		so = self.make_progress_so()
+
+		invoice = frappe.get_doc(create_progress_invoice(so.name, 40))
+		invoice.insert()
+		invoice.submit()
+
+		so.reload()
+		self.assertEqual(flt(so.pb_total_amount), 100000.0)
+		self.assertEqual(flt(so.pb_billed_amount), 40000.0)
+		self.assertEqual(flt(so.pb_remaining_amount), 60000.0)
+
+		invoice.cancel()
+
+		so.reload()
+		self.assertEqual(flt(so.pb_total_amount), 100000.0)
+		self.assertEqual(flt(so.pb_billed_amount), 0.0)
+		self.assertEqual(flt(so.pb_remaining_amount), 100000.0)
+
 	def test_no_phantom_paid_amount_on_rounded_invoice(self):
 		# 30% of 1495 = 448.50, which ERPNext rounds to an invoice total of
 		# 448.00 and computes outstanding_amount against the ROUNDED total

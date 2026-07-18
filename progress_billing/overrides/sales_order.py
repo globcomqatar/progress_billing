@@ -3,6 +3,23 @@ from frappe import _
 from frappe.utils import flt
 
 
+def update_progress_billing_totals(so):
+	"""Set the stored summary fields from the Progress Billing Log (in-memory).
+
+	Total = contract value, Billed = sum of non-cancelled log rows,
+	Remaining = Total - Billed. Callers persist via their own save.
+	"""
+	total = flt(so.grand_total)
+	billed = sum(
+		flt(row.billing_amount)
+		for row in (so.get("pb_progress_billing_log") or [])
+		if row.invoice_status != "Cancelled"
+	)
+	so.pb_total_amount = total
+	so.pb_billed_amount = billed
+	so.pb_remaining_amount = total - billed
+
+
 def refresh_progress_billing_log_payments(doc, method):
 	for row in doc.get("pb_progress_billing_log") or []:
 		if not row.sales_invoice:
@@ -25,6 +42,11 @@ def refresh_progress_billing_log_payments(doc, method):
 		row.payment_percentage = (
 			(row.amount_paid / invoice_total * 100) if invoice_total else 0
 		)
+
+	if doc.pb_billing_method == "Progress Billing":
+		# Keep the stored summary fields current on every form load too, so
+		# they display correctly even before any new invoice event persists them.
+		update_progress_billing_totals(doc)
 
 
 def validate_billing_method_lock(doc, method):

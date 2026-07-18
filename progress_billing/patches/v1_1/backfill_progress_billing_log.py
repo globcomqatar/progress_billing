@@ -1,6 +1,8 @@
 import frappe
 from frappe.utils import cint, flt
 
+from progress_billing.overrides.sales_order import update_progress_billing_totals
+
 
 def execute():
 	# Submitted invoices only: drafts must not be linked from the log (their
@@ -63,6 +65,7 @@ def execute():
 		)
 
 	for so in orders.values():
+		update_progress_billing_totals(so)
 		# A Sales Order's Progress Billing Log can reference a since-cancelled progress
 		# invoice (an intentional audit trail, not a live dependency). Bypass Frappe's
 		# "cannot link to a cancelled document" check for this save, matching the same

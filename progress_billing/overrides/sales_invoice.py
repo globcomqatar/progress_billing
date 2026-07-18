@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from progress_billing.overrides.sales_order import update_progress_billing_totals
+
 
 def update_progress_billing_status(doc, method):
 	sales_orders = {item.sales_order for item in doc.items if item.sales_order}
@@ -99,6 +101,8 @@ def sync_progress_billing_log_row(doc, method):
 	row.amount_paid = amount_paid
 	row.outstanding_amount = doc.outstanding_amount
 	row.payment_percentage = payment_percentage
+
+	update_progress_billing_totals(so)
 
 	# The log row intentionally keeps its Sales Invoice link after that invoice is
 	# cancelled (it's an audit trail, not a live reference), so bypass Frappe's

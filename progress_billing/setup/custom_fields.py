@@ -45,10 +45,47 @@ def get_custom_fields():
 				"depends_on": "eval:doc.pb_billing_method=='Progress Billing'",
 			},
 			{
+				# Stored mirrors of the Billing Summary figures so they are
+				# available to reports, list views, and the API (the HTML
+				# summary is client-side only). Recomputed by
+				# update_progress_billing_totals whenever the log changes.
+				"fieldname": "pb_total_amount",
+				"label": "Total Amount",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"insert_after": "pb_progress_billing_status",
+				"read_only": 1,
+				"allow_on_submit": 1,
+				"no_copy": 1,
+				"depends_on": "eval:doc.pb_billing_method=='Progress Billing'",
+			},
+			{
+				"fieldname": "pb_billed_amount",
+				"label": "Billed Amount",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"insert_after": "pb_total_amount",
+				"read_only": 1,
+				"allow_on_submit": 1,
+				"no_copy": 1,
+				"depends_on": "eval:doc.pb_billing_method=='Progress Billing'",
+			},
+			{
+				"fieldname": "pb_remaining_amount",
+				"label": "Remaining Amount",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"insert_after": "pb_billed_amount",
+				"read_only": 1,
+				"allow_on_submit": 1,
+				"no_copy": 1,
+				"depends_on": "eval:doc.pb_billing_method=='Progress Billing'",
+			},
+			{
 				"fieldname": "pb_progress_billing_log_html",
 				"label": "Billing Summary",
 				"fieldtype": "HTML",
-				"insert_after": "pb_progress_billing_status",
+				"insert_after": "pb_remaining_amount",
 				"depends_on": "eval:doc.pb_billing_method=='Progress Billing'",
 			},
 			{
