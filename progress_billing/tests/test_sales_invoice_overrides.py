@@ -181,6 +181,43 @@ class TestProgressBillingStatusSync(FrappeTestCase):
 		self.assertEqual(flt(so.pb_billed_amount), 0.0)
 		self.assertEqual(flt(so.pb_remaining_amount), 100000.0)
 
+	def test_cumulative_billed_and_remaining_per_row(self):
+		# Each log row stores the cumulative billed amount up to and
+		# including itself, and the contract remaining at that point.
+		# Option A semantics: recomputed on every change, so a cancellation
+		# ripples through all rows and the last non-cancelled row always
+		# matches the Sales Order's own pb_billed/pb_remaining fields.
+		so = self.make_progress_so()
+
+		invoice_1 = frappe.get_doc(create_progress_invoice(so.name, 30))
+		invoice_1.insert()
+		invoice_1.submit()
+
+		invoice_2 = frappe.get_doc(create_progress_invoice(so.name, 20))
+		invoice_2.insert()
+		invoice_2.submit()
+
+		so.reload()
+		rows = sorted(so.pb_progress_billing_log, key=lambda r: r.progress_no)
+		self.assertEqual(flt(rows[0].total_billed_amount), 30000.0)
+		self.assertEqual(flt(rows[0].remaining_amount), 70000.0)
+		self.assertEqual(flt(rows[1].total_billed_amount), 50000.0)
+		self.assertEqual(flt(rows[1].remaining_amount), 50000.0)
+
+		invoice_1.cancel()
+
+		so.reload()
+		rows = sorted(so.pb_progress_billing_log, key=lambda r: r.progress_no)
+		# cancelled row no longer contributes to the running total
+		self.assertEqual(rows[0].invoice_status, "Cancelled")
+		self.assertEqual(flt(rows[0].total_billed_amount), 0.0)
+		self.assertEqual(flt(rows[0].remaining_amount), 100000.0)
+		self.assertEqual(flt(rows[1].total_billed_amount), 20000.0)
+		self.assertEqual(flt(rows[1].remaining_amount), 80000.0)
+		# last non-cancelled row agrees with the order-level fields
+		self.assertEqual(flt(so.pb_billed_amount), 20000.0)
+		self.assertEqual(flt(so.pb_remaining_amount), 80000.0)
+
 	def test_no_phantom_paid_amount_on_rounded_invoice(self):
 		# 30% of 1495 = 448.50, which ERPNext rounds to an invoice total of
 		# 448.00 and computes outstanding_amount against the ROUNDED total

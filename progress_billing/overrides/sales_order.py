@@ -1,23 +1,30 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 
 def update_progress_billing_totals(so):
 	"""Set the stored summary fields from the Progress Billing Log (in-memory).
 
-	Total = contract value, Billed = sum of non-cancelled log rows,
-	Remaining = Total - Billed. Callers persist via their own save.
+	Order level: Total = contract value, Billed = sum of non-cancelled log
+	rows, Remaining = Total - Billed. Row level: each row stores the running
+	billed total up to and including itself and the contract remaining at
+	that point — recomputed on every change, so a cancellation ripples
+	through all later rows. Callers persist via their own save.
 	"""
 	total = flt(so.grand_total)
-	billed = sum(
-		flt(row.billing_amount)
-		for row in (so.get("pb_progress_billing_log") or [])
-		if row.invoice_status != "Cancelled"
-	)
+	running = 0.0
+	for row in sorted(
+		so.get("pb_progress_billing_log") or [], key=lambda r: cint(r.progress_no)
+	):
+		if row.invoice_status != "Cancelled":
+			running += flt(row.billing_amount)
+		row.total_billed_amount = running
+		row.remaining_amount = total - running
+
 	so.pb_total_amount = total
-	so.pb_billed_amount = billed
-	so.pb_remaining_amount = total - billed
+	so.pb_billed_amount = running
+	so.pb_remaining_amount = total - running
 
 
 def refresh_progress_billing_log_payments(doc, method):
